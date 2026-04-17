@@ -1,0 +1,10 @@
+{
+  "name": "Mi Santa Biblia",
+  "short_name": "Mi Biblia",
+  "start_url": "./mi_santa_biblia_app_corregida.html",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "es-AR",
+  "description": "Biblia web tipo app con favoritos y recordatorio del versículo del día"
+}

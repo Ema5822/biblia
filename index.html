@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mi Santa Biblia</title>
   <meta name="description" content="Mi Santa Biblia, versión web tipo app para Netlify." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0b1020" />
   <style>
     :root{
       --bg:#0b1020;
@@ -382,12 +384,12 @@
     }
     .sideDock.left{
       left:max(8px, calc(50% - 300px));
-      transform:translate(-86%, -50%);
+      transform:translate(calc(-100% + 8px), -50%);
     }
     .sideDock.right{
       right:max(8px, calc(50% - 300px));
-      width:min(240px, 38vw);
-      transform:translate(86%, -50%);
+      width:min(260px, 42vw);
+      transform:translate(calc(100% - 8px), -50%);
     }
     .sideDock.open.left{ transform:translate(0, -50%); }
     .sideDock.open.right{ transform:translate(0, -50%); }
@@ -395,8 +397,8 @@
       content:"";
       position:absolute;
       top:50%;
-      width:18px;
-      height:86px;
+      width:14px;
+      height:92px;
       transform:translateY(-50%);
       border-radius:999px;
       background:linear-gradient(180deg, var(--accent), var(--accent-2));
@@ -486,11 +488,17 @@
       line-height:1.45;
     }
     .verseDayCard{
-      margin-bottom:16px;
+      margin:0;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      border-radius:0;
       padding:14px 16px;
       border-radius:18px;
       background:linear-gradient(135deg, rgba(138,180,255,.18), rgba(199,167,255,.14));
       border:1px solid rgba(255,255,255,.08);
+    }
+    .verseDayInline{
+      margin-top:12px;
+      border-bottom:none;
     }
     .verseDayCard h3{
       margin:0 0 8px;
@@ -551,7 +559,7 @@
         <button id="notifBtn" class="secondary">Activar 🔔</button>
         <button id="testNotifBtn" class="ghost">Probar ahora</button>
         <button id="disableNotifBtn" class="ghost">Desactivar</button>
-        <div id="notifStatus" class="notifStatus">Tocá activar para elegir el horario del recordatorio diario.</div>
+        <div id="notifStatus" class="notifStatus">Tocá activar para elegir la hora del recordatorio diario.</div>
       </div>
     </div>
 
@@ -559,6 +567,7 @@
     <aside class="card sidebar">
       <div class="hero">
         <h1>📖 Mi Santa Biblia</h1>
+        <div id="verseDayCard" class="verseDayCard verseDayInline"></div>
       </div>
 
       <div class="controls">
@@ -598,14 +607,6 @@
           <button id="favoriteBtn" class="secondary">Guardar favorito</button>
         </div>
 
-        <div class="grid3">
-          <button id="prevBtn" class="secondary">← Anterior</button>
-          <button id="nextBtn" class="secondary">Siguiente →</button></div>
-</div>
-
-
-      <div class="footerNote">
-        Los datos bíblicos se cargan desde una API pública libre desde el navegador. Las versiones NVI, Reina Valera 1980, NBLA y NTV quedan priorizadas si la API las ofrece con ese nombre o abreviatura.
       </div>
     </aside>
 
@@ -623,7 +624,6 @@
       </div>
 
       <div class="reader">
-        <div id="verseDayCard" class="verseDayCard"></div>
         <div id="status" class="status">Inicializando…</div>
         <div id="passage" class="passage"></div>
       </div>
@@ -641,8 +641,6 @@
       randomBtn: document.getElementById('randomBtn'),
       referenceBtn: document.getElementById('referenceBtn'),
       favoriteBtn: document.getElementById('favoriteBtn'),
-      prevBtn: document.getElementById('prevBtn'),
-      nextBtn: document.getElementById('nextBtn'),
       themeBtn: document.getElementById('themeBtn'),
       fontMinus: document.getElementById('fontMinus'),
       fontReset: document.getElementById('fontReset'),
@@ -749,16 +747,26 @@
       const verse = getStoredVerseForToday();
       if (!els.verseDayCard) return;
       els.verseDayCard.innerHTML = `
-        <h3>📅 Versículo del día</h3>
+        <h3 id="verse-day">📅 Versículo del día</h3>
         <p>${escapeHtml(verse.text)}</p>
         <small>${escapeHtml(verse.reference)}</small>
       `;
+    }
+
+    async function getServiceWorkerRegistration(){
+      if (!('serviceWorker' in navigator)) return null;
+      try {
+        return await navigator.serviceWorker.register('./sw.js');
+      } catch (err) {
+        console.warn('No se pudo registrar el service worker', err);
+        return null;
+      }
     }
     function updateNotifUi(message){
       if (els.notifStatus) {
         els.notifStatus.textContent = message || (state.notifEnabled
           ? `Recordatorio activado para las ${state.notifTime} en este dispositivo.`
-          : 'Tocá activar para elegir el horario del recordatorio diario.');
+          : 'Tocá activar para elegir la hora del recordatorio diario.');
       }
     }
     function saveNotifPrefs(){
@@ -784,23 +792,44 @@
         }, 220);
       } catch {}
     }
-    function showVerseNotification(force=false){
+    async function showVerseNotification(force=false){
       const verse = getStoredVerseForToday();
       const todayKey = new Date().toISOString().slice(0,10);
       const sentKey = localStorage.getItem('biblia.lastNotifDate');
       if (!force && sentKey === todayKey) return;
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('📖 Versículo del día', {
-          body: `${verse.reference} — ${verse.text}`,
-          tag: 'versiculo-del-dia',
-          renotify: true,
-          vibrate: [200,120,200]
-        });
+
+      if (!('Notification' in window)) {
+        if (force) updateNotifUi('Este navegador no soporta notificaciones web.');
+        return;
+      }
+      if (Notification.permission !== 'granted') {
+        if (force) updateNotifUi('Primero tenés que permitir las notificaciones del navegador.');
+        return;
+      }
+
+      const title = '📖 Versículo del día';
+      const body = `${verse.reference} — ${verse.text}  •  Tocá para abrir Mi Santa Biblia.`;
+      const options = {
+        body,
+        tag: 'versiculo-del-dia',
+        renotify: true,
+        vibrate: [200,120,200],
+        data: { url: './#verse-day' }
+      };
+
+      const swReg = await getServiceWorkerRegistration();
+      try {
+        if (swReg && swReg.showNotification) {
+          await swReg.showNotification(title, options);
+        } else {
+          new Notification(title, options);
+        }
         playNotifTone();
         localStorage.setItem('biblia.lastNotifDate', todayKey);
         updateNotifUi(`Versículo enviado hoy. Próximo aviso a las ${state.notifTime}.`);
-      } else if (force) {
-        updateNotifUi('Primero tenés que permitir las notificaciones del navegador.');
+      } catch (err) {
+        console.warn('No se pudo mostrar la notificación', err);
+        updateNotifUi('No se pudo mostrar la notificación en este navegador.');
       }
     }
     function scheduleDailyNotification(){
@@ -812,10 +841,11 @@
       next.setHours(hh || 8, mm || 0, 0, 0);
       if (next <= now) next.setDate(next.getDate() + 1);
       const ms = next - now;
-      state.notifTimer = setTimeout(() => {
-        showVerseNotification();
+      state.notifTimer = setTimeout(async () => {
+        await showVerseNotification();
         scheduleDailyNotification();
       }, ms);
+
       const current = new Date();
       if (current.getHours() === (hh || 8) && current.getMinutes() >= (mm || 0) && current.getMinutes() < ((mm || 0) + 5)) {
         showVerseNotification();
@@ -830,6 +860,7 @@
         return;
       }
       state.notifTime = clean.padStart(5,'0');
+
       if (!('Notification' in window)) {
         state.notifEnabled = true;
         saveNotifPrefs();
@@ -837,6 +868,8 @@
         updateNotifUi(`Horario guardado: ${state.notifTime}. Este navegador no soporta notificaciones web.`);
         return;
       }
+
+      await getServiceWorkerRegistration();
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         state.notifEnabled = false;
@@ -1162,37 +1195,6 @@
       loadChapter();
     }
 
-    function nextPrev(step){
-      const book = state.books.find(b => b.id === state.selectedBook);
-      const total = book?.numberOfChapters || 1;
-      let idx = state.books.findIndex(b => b.id === state.selectedBook);
-
-      if (step === 1){
-        if (state.selectedChapter < total){
-          state.selectedChapter += 1;
-        } else if (idx < state.books.length - 1){
-          idx += 1;
-          state.selectedBook = state.books[idx].id;
-          state.selectedChapter = 1;
-          els.bookSelect.value = state.selectedBook;
-          buildChapterOptions();
-        }
-      } else {
-        if (state.selectedChapter > 1){
-          state.selectedChapter -= 1;
-        } else if (idx > 0){
-          idx -= 1;
-          state.selectedBook = state.books[idx].id;
-          els.bookSelect.value = state.selectedBook;
-          buildChapterOptions();
-          state.selectedChapter = state.books[idx].numberOfChapters;
-        }
-      }
-      state.selectedVerse = null;
-      els.chapterSelect.value = String(state.selectedChapter);
-      loadChapter();
-    }
-
     function copyReference(){
       navigator.clipboard.writeText(state.currentReference || '').then(() => {
         setStatus('Referencia copiada.');
@@ -1334,8 +1336,6 @@
 
       els.randomBtn.addEventListener('click', chooseRandomChapter);
       els.favoriteBtn.addEventListener('click', addFavorite);
-      els.prevBtn.addEventListener('click', () => nextPrev(-1));
-      els.nextBtn.addEventListener('click', () => nextPrev(1));
       els.copyRefChip.addEventListener('click', copyReference);
       els.shareChip.addEventListener('click', shareReference);
       els.scrollTopChip.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
@@ -1395,6 +1395,7 @@
       updateNotifUi();
       bindEvents();
       setupEdgeGestures();
+      await getServiceWorkerRegistration();
       try{
         await loadTranslations();
         if (state.notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
