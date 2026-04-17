@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Palabra Viva - Biblia web</title>
+  <meta name="description" content="App web de Biblia para Netlify con lectura, búsqueda, favoritos y notas." />
+  <style>
+    :root {
+      --bg: #f6f0e6;
+      --bg-soft: #fff9f1;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #7c3aed;
+      --primary-2: #5b21b6;
+      --accent: #f59e0b;
+      --border: #eadfce;
+      --danger: #dc2626;
+      --shadow: 0 12px 30px rgba(18, 18, 18, 0.08);
+    }
+
+    body.dark {
+      --bg: #0f172a;
+      --bg-soft: #111827;
+      --card: #111827;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --primary: #a78bfa;
+      --primary-2: #8b5cf6;
+      --accent: #fbbf24;
+      --border: #243244;
+      --danger: #f87171;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(124,58,237,0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(245,158,11,0.10), transparent 24%),
+        linear-gradient(180deg, var(--bg), var(--bg-soft));
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .container {
+      width: min(1180px, calc(100% - 24px));
+      margin: 0 auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: color-mix(in srgb, var(--bg) 86%, transparent);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 1.5rem;
+      color: white;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: var(--shadow);
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    button, .btn-link {
+      border: none;
+      border-radius: 14px;
+      padding: 11px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .18s ease;
+      font-size: .95rem;
+    }
+
+    button:hover, .btn-link:hover { transform: translateY(-1px); }
+
+    .btn {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .btn-accent {
+      background: linear-gradient(135deg, var(--accent), #f97316);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+
+    .btn-danger {
+      background: color-mix(in srgb, var(--danger) 16%, var(--card));
+      color: var(--danger);
+      border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+    }
+
+    main { padding: 18px 0 34px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .card h2, .card h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 700;
+      background: color-mix(in srgb, var(--primary) 14%, transparent);
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .daily-verse {
+      background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 18%, var(--card)), color-mix(in srgb, var(--accent) 12%, var(--card)));
+    }
+
+    .daily-verse blockquote {
+      margin: 0 0 12px;
+      padding: 0;
+      border: none;
+      font-size: clamp(1.08rem, 2vw, 1.26rem);
+      line-height: 1.65;
+      font-weight: 600;
+    }
+
+    .muted { color: var(--muted); }
+
+    .search-row, .toolbar-row, .controls-wrap {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 14px;
+      background: var(--bg-soft);
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    textarea { min-height: 110px; resize: vertical; }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+
+    .search-row > * { flex: 1 1 220px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr 310px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .book-filter {
+      margin-bottom: 12px;
+    }
+
+    .book-list {
+      display: grid;
+      gap: 8px;
+      max-height: 560px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .book-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: .18s ease;
+    }
+
+    .book-item:hover, .book-item.active {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 10%, var(--bg-soft));
+    }
+
+    .book-tag {
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 8px;
+    }
+
+    .chapters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 4px;
+      max-height: 150px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .chapter-btn {
+      min-width: 46px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .chapter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .reading-meta {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .verse-list, .results-list, .favorites-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .verse-card, .result-card, .favorite-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+    }
+
+    .verse-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--primary) 14%, transparent);
+      color: var(--primary);
+      font-size: .85rem;
+      font-weight: 700;
+      margin-right: 8px;
+      vertical-align: top;
+    }
+
+    .verse-text {
+      display: inline;
+      line-height: 1.7;
+      font-size: var(--verse-size, 1rem);
+    }
+
+    .verse-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .mini-btn {
+      padding: 9px 11px;
+      border-radius: 12px;
+      font-size: .85rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .panel-stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .kpi-item {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .kpi-item strong {
+      display: block;
+      font-size: 1.2rem;
+      margin-bottom: 4px;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 10px 0;
+    }
+
+    .loader {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--accent) 12%, var(--card));
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .loader.show { display: inline-flex; }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink { from { opacity: .25; } to { opacity: 1; } }
+
+    .note-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .note-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .range-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .range-control input[type="range"] { padding: 0; }
+
+    .top-link {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 15;
+      display: none;
+    }
+
+    .top-link.show { display: block; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: .82rem;
+      color: var(--muted);
+      background: var(--bg-soft);
+    }
+
+    footer {
+      padding: 8px 0 26px;
+      color: var(--muted);
+      text-align: center;
+      font-size: .92rem;
+    }
+
+    @media (max-width: 1080px) {
+      .grid { grid-template-columns: 280px 1fr; }
+      .panel-stack:last-child { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 800px) {
+      .hero, .grid { grid-template-columns: 1fr; }
+      .header-inner { flex-direction: column; align-items: stretch; }
+      .header-actions { justify-content: space-between; }
+      .kpi { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header id="top">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="logo">✝</div>
+        <div>
+          <h1>Palabra Viva</h1>
+          <p>Biblia web completa para Netlify, con lectura, búsqueda, favoritos y notas.</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn" id="themeToggle">🌙 Modo oscuro</button>
+        <button class="btn" id="continueBtn">📖 Continuar lectura</button>
+        <button class="btn-accent" id="dailyVerseBtn">✨ Versículo del día</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <article class="card daily-verse">
+        <div class="badge">Inspiración diaria</div>
+        <blockquote id="dailyVerseText">Cargando versículo del día...</blockquote>
+        <div id="dailyVerseRef" class="muted"></div>
+        <div class="verse-actions" style="margin-top:14px;">
+          <button class="mini-btn" id="saveDailyFavorite">⭐ Guardar</button>
+          <button class="mini-btn" id="copyDailyVerse">📋 Copiar</button>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2 style="margin-bottom:8px;">Buscar en toda la Biblia</h2>
+        <p class="muted" style="margin-top:0;">Podés buscar palabras o frases. La búsqueda completa carga los libros automáticamente.</p>
+        <div class="search-row">
+          <input id="searchInput" type="text" placeholder="Ejemplo: amor, esperanza, no temas" />
+          <button class="btn-primary" id="searchBtn">Buscar</button>
+        </div>
+        <div class="loader" id="searchLoader"><span class="dot"></span> Buscando en los libros...</div>
+        <div class="kpi">
+          <div class="kpi-item"><strong id="favCount">0</strong><span class="muted">Favoritos</span></div>
+          <div class="kpi-item"><strong id="notesCount">0</strong><span class="muted">Notas</span></div>
+          <div class="kpi-item"><strong id="historyInfo">—</strong><span class="muted">Última lectura</span></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <aside class="panel-stack">
+        <article class="card">
+          <h3>Libros</h3>
+          <div class="book-filter search-row">
+            <select id="testamentFilter">
+              <option value="all">Todos</option>
+              <option value="AT">Antiguo Testamento</option>
+              <option value="NT">Nuevo Testamento</option>
+            </select>
+            <input id="bookFilterInput" type="text" placeholder="Filtrar libro" />
+          </div>
+          <div class="book-list" id="bookList"></div>
+        </article>
+      </aside>
+
+      <section class="panel-stack">
+        <article class="card">
+          <div class="reading-meta">
+            <div>
+              <h2 id="readingTitle" style="margin-bottom:6px;">Seleccioná un libro</h2>
+              <div class="muted" id="readingSub">Después elegí un capítulo para empezar a leer.</div>
+            </div>
+            <div class="controls-wrap">
+              <span class="pill" id="sourceInfo">RVR1960</span>
+              <span class="pill" id="chapterInfo">Sin capítulo</span>
+            </div>
+          </div>
+
+          <div class="chapters" id="chapterList"></div>
+
+          <div class="toolbar-row" style="margin:10px 0 4px;">
+            <button class="btn" id="prevChapterBtn">⬅ Capítulo anterior</button>
+            <button class="btn" id="nextChapterBtn">Capítulo siguiente ➡</button>
+          </div>
+
+          <div class="loader" id="chapterLoader"><span class="dot"></span> Cargando capítulo...</div>
+          <div class="verse-list" id="verseList"><div class="empty">Todavía no seleccionaste un libro.</div></div>
+        </article>
+
+        <article class="card">
+          <h3>Resultados de búsqueda</h3>
+          <div class="results-list" id="searchResults"><div class="empty">Todavía no hiciste ninguna búsqueda.</div></div>
+        </article>
+      </section>
+
+      <aside class="panel-stack">
+        <article class="card">
+          <h3>Favoritos</h3>
+          <div class="favorites-list" id="favoritesList"></div>
+        </article>
+
+        <article class="card">
+          <h3>Notas</h3>
+          <p class="muted" style="margin-top:0;">Guardá reflexiones por referencia bíblica.</p>
+          <input id="noteReference" type="text" placeholder="Ejemplo: Juan 3:16" />
+          <textarea id="noteText" placeholder="Escribí tu nota o reflexión..."></textarea>
+          <div class="toolbar-row">
+            <button class="btn-primary" id="saveNoteBtn">Guardar nota</button>
+            <button class="btn-danger" id="clearNotesBtn">Borrar todas</button>
+          </div>
+          <div class="note-list" id="noteList"></div>
+        </article>
+
+        <article class="card">
+          <h3>Ajustes</h3>
+          <div class="range-control">
+            <label for="fontSizeRange"><strong>Tamaño del texto</strong></label>
+            <span id="fontSizeLabel" class="pill">100%</span>
+          </div>
+          <input id="fontSizeRange" type="range" min="90" max="135" step="5" value="100" />
+        </article>
+      </aside>
+    </section>
+  </main>
+
+  <a class="top-link btn-primary" id="topLink" href="#top">⬆ Arriba</a>
+
+  <footer class="container">
+    Hecha para publicar directo en Netlify. Guarda favoritos, notas, tema y última lectura en tu navegador.
+  </footer>
+
+  <script>
+    const BOOKS = [
+      { testament:'AT', name:'Génesis', file:'genesis', chapters:50 },
+      { testament:'AT', name:'Éxodo', file:'exodo', chapters:40 },
+      { testament:'AT', name:'Levítico', file:'levitico', chapters:27 },
+      { testament:'AT', name:'Números', file:'numeros', chapters:36 },
+      { testament:'AT', name:'Deuteronomio', file:'deuteronomio', chapters:34 },
+      { testament:'AT', name:'Josué', file:'josue', chapters:24 },
+      { testament:'AT', name:'Jueces', file:'jueces', chapters:21 },
+      { testament:'AT', name:'Rut', file:'rut', chapters:4 },
+      { testament:'AT', name:'1 Samuel', file:'1_samuel', chapters:31 },
+      { testament:'AT', name:'2 Samuel', file:'2_samuel', chapters:24 },
+      { testament:'AT', name:'1 Reyes', file:'1_reyes', chapters:22 },
+      { testament:'AT', name:'2 Reyes', file:'2_reyes', chapters:25 },
+      { testament:'AT', name:'1 Crónicas', file:'1_cronicas', chapters:29 },
+      { testament:'AT', name:'2 Crónicas', file:'2_cronicas', chapters:36 },
+      { testament:'AT', name:'Esdras', file:'esdras', chapters:10 },
+      { testament:'AT', name:'Nehemías', file:'nehemias', chapters:13 },
+      { testament:'AT', name:'Ester', file:'ester', chapters:10 },
+      { testament:'AT', name:'Job', file:'job', chapters:42 },
+      { testament:'AT', name:'Salmos', file:'salmos', chapters:150 },
+      { testament:'AT', name:'Proverbios', file:'proverbios', chapters:31 },
+      { testament:'AT', name:'Eclesiastés', file:'eclesiastes', chapters:12 },
+      { testament:'AT', name:'Cantares', file:'cantares', chapters:8 },
+      { testament:'AT', name:'Isaías', file:'isaias', chapters:66 },
+      { testament:'AT', name:'Jeremías', file:'jeremias', chapters:52 },
+      { testament:'AT', name:'Lamentaciones', file:'lamentaciones', chapters:5 },
+      { testament:'AT', name:'Ezequiel', file:'ezequiel', chapters:48 },
+      { testament:'AT', name:'Daniel', file:'daniel', chapters:12 },
+      { testament:'AT', name:'Oseas', file:'oseas', chapters:14 },
+      { testament:'AT', name:'Joel', file:'joel', chapters:3 },
+      { testament:'AT', name:'Amós', file:'amos', chapters:9 },
+      { testament:'AT', name:'Abdías', file:'abdias', chapters:1 },
+      { testament:'AT', name:'Jonás', file:'jonas', chapters:4 },
+      { testament:'AT', name:'Miqueas', file:'miqueas', chapters:7 },
+      { testament:'AT', name:'Nahúm', file:'nahum', chapters:3 },
+      { testament:'AT', name:'Habacuc', file:'habacuc', chapters:3 },
+      { testament:'AT', name:'Sofonías', file:'sofonias', chapters:3 },
+      { testament:'AT', name:'Hageo', file:'hageo', chapters:2 },
+      { testament:'AT', name:'Zacarías', file:'zacarias', chapters:14 },
+      { testament:'AT', name:'Malaquías', file:'malaquias', chapters:4 },
+      { testament:'NT', name:'Mateo', file:'mateo', chapters:28 },
+      { testament:'NT', name:'Marcos', file:'marcos', chapters:16 },
+      { testament:'NT', name:'Lucas', file:'lucas', chapters:24 },
+      { testament:'NT', name:'Juan', file:'juan', chapters:21 },
+      { testament:'NT', name:'Hechos', file:'hechos', chapters:28 },
+      { testament:'NT', name:'Romanos', file:'romanos', chapters:16 },
+      { testament:'NT', name:'1 Corintios', file:'1_corintios', chapters:16 },
+      { testament:'NT', name:'2 Corintios', file:'2_corintios', chapters:13 },
+      { testament:'NT', name:'Gálatas', file:'galatas', chapters:6 },
+      { testament:'NT', name:'Efesios', file:'efesios', chapters:6 },
+      { testament:'NT', name:'Filipenses', file:'filipenses', chapters:4 },
+      { testament:'NT', name:'Colosenses', file:'colosenses', chapters:4 },
+      { testament:'NT', name:'1 Tesalonicenses', file:'1_tesalonicenses', chapters:5 },
+      { testament:'NT', name:'2 Tesalonicenses', file:'2_tesalonicenses', chapters:3 },
+      { testament:'NT', name:'1 Timoteo', file:'1_timoteo', chapters:6 },
+      { testament:'NT', name:'2 Timoteo', file:'2_timoteo', chapters:4 },
+      { testament:'NT', name:'Tito', file:'tito', chapters:3 },
+      { testament:'NT', name:'Filemón', file:'filemon', chapters:1 },
+      { testament:'NT', name:'Hebreos', file:'hebreos', chapters:13 },
+      { testament:'NT', name:'Santiago', file:'santiago', chapters:5 },
+      { testament:'NT', name:'1 Pedro', file:'1_pedro', chapters:5 },
+      { testament:'NT', name:'2 Pedro', file:'2_pedro', chapters:3 },
+      { testament:'NT', name:'1 Juan', file:'1_juan', chapters:5 },
+      { testament:'NT', name:'2 Juan', file:'2_juan', chapters:1 },
+      { testament:'NT', name:'3 Juan', file:'3_juan', chapters:1 },
+      { testament:'NT', name:'Judas', file:'judas', chapters:1 },
+      { testament:'NT', name:'Apocalipsis', file:'apocalipsis', chapters:22 }
+    ];
+
+    const CDN_BASE = 'https://cdn.jsdelivr.net/gh/josevladimir/bible-json@master/procesados';
+    const storage = {
+      get(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch {
+          return fallback;
+        }
+      },
+      set(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    };
+
+    const state = {
+      selectedBook: null,
+      selectedChapter: null,
+      cache: {},
+      favorites: storage.get('pv_favorites', []),
+      notes: storage.get('pv_notes', []),
+      lastReading: storage.get('pv_lastReading', null),
+      theme: storage.get('pv_theme', 'light'),
+      fontSize: storage.get('pv_fontSize', 100),
+      dailyVerse: storage.get('pv_dailyVerse', null),
+      dailyVerseDate: storage.get('pv_dailyVerseDate', null)
+    };
+
+    const els = {
+      body: document.body,
+      bookList: document.getElementById('bookList'),
+      testamentFilter: document.getElementById('testamentFilter'),
+      bookFilterInput: document.getElementById('bookFilterInput'),
+      readingTitle: document.getElementById('readingTitle'),
+      readingSub: document.getElementById('readingSub'),
+      chapterList: document.getElementById('chapterList'),
+      verseList: document.getElementById('verseList'),
+      chapterLoader: document.getElementById('chapterLoader'),
+      searchInput: document.getElementById('searchInput'),
+      searchBtn: document.getElementById('searchBtn'),
+      searchResults: document.getElementById('searchResults'),
+      searchLoader: document.getElementById('searchLoader'),
+      favoritesList: document.getElementById('favoritesList'),
+      noteReference: document.getElementById('noteReference'),
+      noteText: document.getElementById('noteText'),
+      saveNoteBtn: document.getElementById('saveNoteBtn'),
+      clearNotesBtn: document.getElementById('clearNotesBtn'),
+      noteList: document.getElementById('noteList'),
+      favCount: document.getElementById('favCount'),
+      notesCount: document.getElementById('notesCount'),
+      historyInfo: document.getElementById('historyInfo'),
+      themeToggle: document.getElementById('themeToggle'),
+      continueBtn: document.getElementById('continueBtn'),
+      dailyVerseBtn: document.getElementById('dailyVerseBtn'),
+      dailyVerseText: document.getElementById('dailyVerseText'),
+      dailyVerseRef: document.getElementById('dailyVerseRef'),
+      saveDailyFavorite: document.getElementById('saveDailyFavorite'),
+      copyDailyVerse: document.getElementById('copyDailyVerse'),
+      prevChapterBtn: document.getElementById('prevChapterBtn'),
+      nextChapterBtn: document.getElementById('nextChapterBtn'),
+      fontSizeRange: document.getElementById('fontSizeRange'),
+      fontSizeLabel: document.getElementById('fontSizeLabel'),
+      topLink: document.getElementById('topLink'),
+      chapterInfo: document.getElementById('chapterInfo')
+    };
+
+    function slugify(text) {
+      return text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    }
+
+    function setTheme(theme) {
+      state.theme = theme;
+      storage.set('pv_theme', theme);
+      els.body.classList.toggle('dark', theme === 'dark');
+      els.themeToggle.textContent = theme === 'dark' ? '☀️ Modo claro' : '🌙 Modo oscuro';
+    }
+
+    function renderBooks() {
+      const test = els.testamentFilter.value;
+      const text = slugify(els.bookFilterInput.value.trim());
+
+      const list = BOOKS.filter(book => {
+        const testOk = test === 'all' || book.testament === test;
+        const textOk = !text || slugify(book.name).includes(text);
+        return testOk && textOk;
+      });
+
+      els.bookList.innerHTML = list.map(book => `
+        <button class="book-item ${state.selectedBook && state.selectedBook.file === book.file ? 'active' : ''}" data-book="${book.file}">
+          <span>${book.name}</span>
+          <span class="book-tag">${book.testament}</span>
+        </button>
+      `).join('') || '<div class="empty">No se encontraron libros.</div>';
+
+      els.bookList.querySelectorAll('[data-book]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const selected = BOOKS.find(b => b.file === btn.dataset.book);
+          selectBook(selected);
+        });
+      });
+    }
+
+    function renderChapters() {
+      if (!state.selectedBook) {
+        els.chapterList.innerHTML = '';
+        return;
+      }
+      const total = state.selectedBook.chapters;
+      els.chapterList.innerHTML = Array.from({ length: total }, (_, i) => i + 1).map(ch => `
+        <button class="chapter-btn ${state.selectedChapter === ch ? 'active' : ''}" data-chapter="${ch}">${ch}</button>
+      `).join('');
+
+      els.chapterList.querySelectorAll('[data-chapter]').forEach(btn => {
+        btn.addEventListener('click', () => loadChapter(Number(btn.dataset.chapter)));
+      });
+    }
+
+    async function loadBookData(book) {
+      if (state.cache[book.file]) return state.cache[book.file];
+
+      const url = `${CDN_BASE}/${book.file}.js`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('No se pudo cargar el libro');
+      const text = await res.text();
+      const cleaned = text.replace(/^\s*module\.exports\s*=\s*/, '').replace(/;?\s*$/, '');
+      const data = new Function(`return ${cleaned}`)();
+      state.cache[book.file] = data;
+      return data;
+    }
+
+    async function selectBook(book) {
+      state.selectedBook = book;
+      state.selectedChapter = null;
+      renderBooks();
+      renderChapters();
+      els.readingTitle.textContent = book.name;
+      els.readingSub.textContent = `Este libro tiene ${book.chapters} capítulo${book.chapters > 1 ? 's' : ''}.`;
+      els.chapterInfo.textContent = 'Elegí un capítulo';
+      els.verseList.innerHTML = '<div class="empty">Elegí un capítulo para comenzar.</div>';
+      if (book.chapters === 1) loadChapter(1);
+    }
+
+    function verseReference(bookName, chapter, verse) {
+      return `${bookName} ${chapter}:${verse}`;
+    }
+
+    function persistLastReading() {
+      if (!state.selectedBook || !state.selectedChapter) return;
+      state.lastReading = {
+        bookFile: state.selectedBook.file,
+        chapter: state.selectedChapter,
+        label: `${state.selectedBook.name} ${state.selectedChapter}`
+      };
+      storage.set('pv_lastReading', state.lastReading);
+      updateStats();
+    }
+
+    async function loadChapter(chapter) {
+      if (!state.selectedBook) return;
+      state.selectedChapter = chapter;
+      renderChapters();
+      els.chapterLoader.classList.add('show');
+      els.verseList.innerHTML = '';
+      try {
+        const bookData = await loadBookData(state.selectedBook);
+        const verses = bookData[chapter - 1] || [];
+
+        els.readingTitle.textContent = `${state.selectedBook.name} ${chapter}`;
+        els.readingSub.textContent = `Capítulo ${chapter} con ${verses.length} versículo${verses.length !== 1 ? 's' : ''}.`;
+        els.chapterInfo.textContent = `Capítulo ${chapter}`;
+
+        if (!verses.length) {
+          els.verseList.innerHTML = '<div class="empty">No se encontraron versículos para este capítulo.</div>';
+        } else {
+          els.verseList.innerHTML = verses.map((text, idx) => {
+            const ref = verseReference(state.selectedBook.name, chapter, idx + 1);
+            const isFav = state.favorites.some(f => f.reference === ref);
+            return `
+              <article class="verse-card">
+                <div><span class="verse-number">${idx + 1}</span><span class="verse-text">${escapeHtml(text)}</span></div>
+                <div class="verse-actions">
+                  <button class="mini-btn" data-fav="${encodeURIComponent(ref)}" data-text="${encodeURIComponent(text)}">${isFav ? '✅ Guardado' : '⭐ Guardar'}</button>
+                  <button class="mini-btn" data-copy="${encodeURIComponent(ref)}" data-copytext="${encodeURIComponent(text)}">📋 Copiar</button>
+                  <button class="mini-btn" data-note="${encodeURIComponent(ref)}">📝 Nota</button>
+                </div>
+              </article>
+            `;
+          }).join('');
+        }
+
+        bindVerseActions();
+        persistLastReading();
+      } catch (error) {
+        console.error(error);
+        els.verseList.innerHTML = '<div class="empty">No pude cargar este capítulo. Revisá tu conexión o probá de nuevo.</div>';
+      } finally {
+        els.chapterLoader.classList.remove('show');
+      }
+    }
+
+    function bindVerseActions() {
+      document.querySelectorAll('[data-fav]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const ref = decodeURIComponent(btn.dataset.fav);
+          const text = decodeURIComponent(btn.dataset.text);
+          toggleFavorite(ref, text);
+        });
+      });
+      document.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ref = decodeURIComponent(btn.dataset.copy);
+          const text = decodeURIComponent(btn.dataset.copytext);
+          await copyText(`${ref}\n${text}`);
+          btn.textContent = '✅ Copiado';
+          setTimeout(() => btn.textContent = '📋 Copiar', 1300);
+        });
+      });
+      document.querySelectorAll('[data-note]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          els.noteReference.value = decodeURIComponent(btn.dataset.note);
+          els.noteText.focus();
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        });
+      });
+    }
+
+    function toggleFavorite(reference, text) {
+      const index = state.favorites.findIndex(f => f.reference === reference);
+      if (index >= 0) {
+        state.favorites.splice(index, 1);
+      } else {
+        state.favorites.unshift({ reference, text });
+      }
+      storage.set('pv_favorites', state.favorites);
+      renderFavorites();
+      updateStats();
+      if (state.selectedBook && state.selectedChapter) loadChapter(state.selectedChapter);
+    }
+
+    function renderFavorites() {
+      if (!state.favorites.length) {
+        els.favoritesList.innerHTML = '<div class="empty">No tenés favoritos guardados.</div>';
+        return;
+      }
+
+      els.favoritesList.innerHTML = state.favorites.map((item, idx) => `
+        <article class="favorite-card">
+          <strong>${escapeHtml(item.reference)}</strong>
+          <p style="margin:8px 0 0; line-height:1.6;">${escapeHtml(item.text)}</p>
+          <div class="verse-actions">
+            <button class="mini-btn" data-copyfav="${idx}">📋 Copiar</button>
+            <button class="mini-btn btn-danger" data-removefav="${idx}">🗑 Quitar</button>
+          </div>
+        </article>
+      `).join('');
+
+      els.favoritesList.querySelectorAll('[data-copyfav]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const item = state.favorites[Number(btn.dataset.copyfav)];
+          copyText(`${item.reference}\n${item.text}`);
+        });
+      });
+      els.favoritesList.querySelectorAll('[data-removefav]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.favorites.splice(Number(btn.dataset.removefav), 1);
+          storage.set('pv_favorites', state.favorites);
+          renderFavorites();
+          updateStats();
+          if (state.selectedBook && state.selectedChapter) loadChapter(state.selectedChapter);
+        });
+      });
+    }
+
+    function saveNote() {
+      const reference = els.noteReference.value.trim();
+      const text = els.noteText.value.trim();
+      if (!reference || !text) return;
+      state.notes.unshift({ reference, text, createdAt: new Date().toISOString() });
+      storage.set('pv_notes', state.notes);
+      els.noteReference.value = '';
+      els.noteText.value = '';
+      renderNotes();
+      updateStats();
+    }
+
+    function renderNotes() {
+      if (!state.notes.length) {
+        els.noteList.innerHTML = '<div class="empty">Todavía no guardaste notas.</div>';
+        return;
+      }
+      els.noteList.innerHTML = state.notes.map((note, idx) => `
+        <article class="note-card">
+          <strong>${escapeHtml(note.reference)}</strong>
+          <p style="margin:8px 0; line-height:1.6;">${escapeHtml(note.text)}</p>
+          <div class="toolbar-row">
+            <button class="mini-btn" data-copynote="${idx}">📋 Copiar</button>
+            <button class="mini-btn btn-danger" data-removenote="${idx}">🗑 Quitar</button>
+          </div>
+        </article>
+      `).join('');
+
+      els.noteList.querySelectorAll('[data-copynote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const note = state.notes[Number(btn.dataset.copynote)];
+          copyText(`${note.reference}\n${note.text}`);
+        });
+      });
+      els.noteList.querySelectorAll('[data-removenote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.notes.splice(Number(btn.dataset.removenote), 1);
+          storage.set('pv_notes', state.notes);
+          renderNotes();
+          updateStats();
+        });
+      });
+    }
+
+    function updateStats() {
+      els.favCount.textContent = state.favorites.length;
+      els.notesCount.textContent = state.notes.length;
+      els.historyInfo.textContent = state.lastReading ? state.lastReading.label : '—';
+    }
+
+    async function runSearch() {
+      const term = els.searchInput.value.trim();
+      if (!term) return;
+      const q = slugify(term);
+      els.searchLoader.classList.add('show');
+      els.searchResults.innerHTML = '';
+      const results = [];
+
+      try {
+        for (const book of BOOKS) {
+          const data = await loadBookData(book);
+          data.forEach((chapter, chapterIndex) => {
+            chapter.forEach((verseText, verseIndex) => {
+              if (slugify(verseText).includes(q)) {
+                results.push({
+                  reference: `${book.name} ${chapterIndex + 1}:${verseIndex + 1}`,
+                  text: verseText,
+                  bookFile: book.file,
+                  chapter: chapterIndex + 1
+                });
+              }
+            });
+          });
+          if (results.length >= 120) break;
+        }
+
+        if (!results.length) {
+          els.searchResults.innerHTML = '<div class="empty">No encontré resultados con esa búsqueda.</div>';
+        } else {
+          els.searchResults.innerHTML = results.slice(0, 120).map((item, idx) => `
+            <article class="result-card">
+              <strong>${escapeHtml(item.reference)}</strong>
+              <p style="line-height:1.6; margin:8px 0 0;">${highlightMatch(item.text, term)}</p>
+              <div class="verse-actions">
+                <button class="mini-btn" data-openresult="${idx}">📖 Abrir</button>
+                <button class="mini-btn" data-favresult="${idx}">⭐ Guardar</button>
+              </div>
+            </article>
+          `).join('');
+
+          els.searchResults.querySelectorAll('[data-openresult]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const item = results[Number(btn.dataset.openresult)];
+              const book = BOOKS.find(b => b.file === item.bookFile);
+              await selectBook(book);
+              await loadChapter(item.chapter);
+              window.scrollTo({ top: 340, behavior: 'smooth' });
+            });
+          });
+
+          els.searchResults.querySelectorAll('[data-favresult]').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const item = results[Number(btn.dataset.favresult)];
+              toggleFavorite(item.reference, item.text);
+            });
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        els.searchResults.innerHTML = '<div class="empty">No pude completar la búsqueda. Revisá tu conexión y probá de nuevo.</div>';
+      } finally {
+        els.searchLoader.classList.remove('show');
+      }
+    }
+
+    function highlightMatch(text, term) {
+      if (!term) return escapeHtml(text);
+      const safe = escapeHtml(text);
+      const regex = new RegExp(`(${escapeRegExp(term)})`, 'ig');
+      return safe.replace(regex, '<mark>$1</mark>');
+    }
+
+    function escapeRegExp(s) {
+      return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const input = document.createElement('textarea');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+    }
+
+    async function chooseDailyVerse(forceNew = false) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (!forceNew && state.dailyVerse && state.dailyVerseDate === today) {
+        renderDailyVerse();
+        return;
+      }
+
+      const randomBook = BOOKS[Math.floor(Math.random() * BOOKS.length)];
+      const data = await loadBookData(randomBook);
+      const chapterIndex = Math.floor(Math.random() * data.length);
+      const verses = data[chapterIndex];
+      const verseIndex = Math.floor(Math.random() * verses.length);
+
+      state.dailyVerse = {
+        reference: `${randomBook.name} ${chapterIndex + 1}:${verseIndex + 1}`,
+        text: verses[verseIndex]
+      };
+      state.dailyVerseDate = today;
+      storage.set('pv_dailyVerse', state.dailyVerse);
+      storage.set('pv_dailyVerseDate', state.dailyVerseDate);
+      renderDailyVerse();
+    }
+
+    function renderDailyVerse() {
+      if (!state.dailyVerse) return;
+      els.dailyVerseText.textContent = state.dailyVerse.text;
+      els.dailyVerseRef.textContent = state.dailyVerse.reference;
+    }
+
+    function goToLastReading() {
+      if (!state.lastReading) return;
+      const book = BOOKS.find(b => b.file === state.lastReading.bookFile);
+      if (!book) return;
+      selectBook(book).then(() => loadChapter(state.lastReading.chapter));
+      window.scrollTo({ top: 330, behavior: 'smooth' });
+    }
+
+    function changeChapter(offset) {
+      if (!state.selectedBook || !state.selectedChapter) return;
+      const next = state.selectedChapter + offset;
+      if (next < 1 || next > state.selectedBook.chapters) return;
+      loadChapter(next);
+    }
+
+    function applyFontSize(value) {
+      state.fontSize = Number(value);
+      storage.set('pv_fontSize', state.fontSize);
+      document.documentElement.style.setProperty('--verse-size', `${state.fontSize / 100}rem`);
+      els.fontSizeRange.value = state.fontSize;
+      els.fontSizeLabel.textContent = `${state.fontSize}%`;
+    }
+
+    function bindEvents() {
+      els.testamentFilter.addEventListener('change', renderBooks);
+      els.bookFilterInput.addEventListener('input', renderBooks);
+      els.searchBtn.addEventListener('click', runSearch);
+      els.searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+      els.themeToggle.addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+      els.saveNoteBtn.addEventListener('click', saveNote);
+      els.clearNotesBtn.addEventListener('click', () => {
+        if (!state.notes.length) return;
+        if (!confirm('¿Querés borrar todas las notas?')) return;
+        state.notes = [];
+        storage.set('pv_notes', state.notes);
+        renderNotes();
+        updateStats();
+      });
+      els.continueBtn.addEventListener('click', goToLastReading);
+      els.dailyVerseBtn.addEventListener('click', () => chooseDailyVerse(true));
+      els.saveDailyFavorite.addEventListener('click', () => {
+        if (!state.dailyVerse) return;
+        toggleFavorite(state.dailyVerse.reference, state.dailyVerse.text);
+      });
+      els.copyDailyVerse.addEventListener('click', () => {
+        if (!state.dailyVerse) return;
+        copyText(`${state.dailyVerse.reference}\n${state.dailyVerse.text}`);
+      });
+      els.prevChapterBtn.addEventListener('click', () => changeChapter(-1));
+      els.nextChapterBtn.addEventListener('click', () => changeChapter(1));
+      els.fontSizeRange.addEventListener('input', e => applyFontSize(e.target.value));
+
+      window.addEventListener('scroll', () => {
+        els.topLink.classList.toggle('show', window.scrollY > 500);
+      });
+    }
+
+    async function init() {
+      setTheme(state.theme);
+      applyFontSize(state.fontSize);
+      renderBooks();
+      renderFavorites();
+      renderNotes();
+      updateStats();
+      bindEvents();
+      try {
+        await chooseDailyVerse(false);
+      } catch {
+        els.dailyVerseText.textContent = 'No pude cargar el versículo del día en este momento.';
+        els.dailyVerseRef.textContent = 'Probá de nuevo.';
+      }
+      if (state.lastReading) {
+        els.readingSub.textContent = `Última lectura: ${state.lastReading.label}.`;
+      }
+      const defaultBook = BOOKS.find(b => b.file === 'juan');
+      await selectBook(defaultBook);
+      await loadChapter(3);
+    }
+
+    init();
+  </script>
+</body>
+</html>
