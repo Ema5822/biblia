@@ -384,30 +384,16 @@
     }
     .sideDock.left{
       left:max(8px, calc(50% - 300px));
-      transform:translate(calc(-100% + 8px), -50%);
+      transform:translate(calc(-100% - 18px), -50%);
     }
     .sideDock.right{
       right:max(8px, calc(50% - 300px));
       width:min(260px, 42vw);
-      transform:translate(calc(100% - 8px), -50%);
+      transform:translate(calc(100% + 18px), -50%);
     }
     .sideDock.open.left{ transform:translate(0, -50%); }
     .sideDock.open.right{ transform:translate(0, -50%); }
-    .sideDock::after{
-      content:"";
-      position:absolute;
-      top:50%;
-      width:14px;
-      height:92px;
-      transform:translateY(-50%);
-      border-radius:999px;
-      background:linear-gradient(180deg, var(--accent), var(--accent-2));
-      opacity:.9;
-      box-shadow:0 8px 18px rgba(0,0,0,.22);
-      pointer-events:none;
-    }
-    .sideDock.left::after{ right:-8px; }
-    .sideDock.right::after{ left:-8px; }
+    .sideDock::after{ display:none; }
     .dockTitle{
       font-size:.82rem;
       font-weight:700;
@@ -517,8 +503,8 @@
 
     @media (max-width: 960px){
       .appFrame{width:min(100%, 460px);}
-      .sideDock.left{left:8px;}
-      .sideDock.right{right:8px; width:min(200px, 46vw);}
+      .sideDock.left{left:8px; transform:translate(calc(-100% - 18px), -50%);}
+      .sideDock.right{right:8px; width:min(200px, 46vw); transform:translate(calc(100% + 18px), -50%);}
       .dockTitle{display:none;}
       .dockRow{flex-wrap:nowrap;}
     }
@@ -529,8 +515,8 @@
       .card{border-radius:0; border-left:none; border-right:none;}
       .sidebar{border-radius:0 0 28px 28px;}
       .content{border-radius:28px 28px 0 0;}
-      .sideDock.left{left:6px;}
-      .sideDock.right{top:50%; right:6px; width:min(220px, 64vw);}
+      .sideDock.left{left:6px; transform:translate(calc(-100% - 18px), -50%);}
+      .sideDock.right{top:50%; right:6px; width:min(220px, 64vw); transform:translate(calc(100% + 18px), -50%);}
       .grid2, .grid3, .actions{
         grid-template-columns:1fr;
       }
@@ -792,14 +778,42 @@
         }, 220);
       } catch {}
     }
+
+    function isLikelyWebView(){
+      const ua = navigator.userAgent || '';
+      return /; wv\)|\bwv\b|Version\/\d+\.\d+ Chrome\/.+ Mobile Safari\/.+|WebView/i.test(ua) || !!window.ReactNativeWebView;
+    }
+    function supportsRealWebNotifications(){
+      return ('Notification' in window) && !isLikelyWebView();
+    }
+    function showInAppVersePopup(){
+      const verse = getStoredVerseForToday();
+      const todayKey = new Date().toISOString().slice(0,10);
+      const shownKey = localStorage.getItem('biblia.lastInAppPopupDate');
+      if (shownKey === todayKey) return;
+      localStorage.setItem('biblia.lastInAppPopupDate', todayKey);
+      setTimeout(() => {
+        alert(`📖 Versículo del día\n\n${verse.reference}\n${verse.text}\n\nAbriste la app en tu horario guardado.`);
+      }, 350);
+    }
+    async function maybeShowWebViewReminderOnOpen(){
+      if (!state.notifEnabled) return;
+      if (!isLikelyWebView()) return;
+      const [hh, mm] = state.notifTime.split(':').map(Number);
+      const now = new Date();
+      const due = new Date();
+      due.setHours(hh || 8, mm || 0, 0, 0);
+      if (now >= due) showInAppVersePopup();
+    }
+
     async function showVerseNotification(force=false){
       const verse = getStoredVerseForToday();
       const todayKey = new Date().toISOString().slice(0,10);
       const sentKey = localStorage.getItem('biblia.lastNotifDate');
       if (!force && sentKey === todayKey) return;
 
-      if (!('Notification' in window)) {
-        if (force) updateNotifUi('Este navegador no soporta notificaciones web.');
+      if (!supportsRealWebNotifications()) {
+        if (force) updateNotifUi(isLikelyWebView() ? 'En AppCreator24 modo web no hay push web real en segundo plano. Te dejo recordatorio emergente al abrir la app.' : 'Este navegador no soporta notificaciones web.');
         return;
       }
       if (Notification.permission !== 'granted') {
@@ -842,13 +856,15 @@
       if (next <= now) next.setDate(next.getDate() + 1);
       const ms = next - now;
       state.notifTimer = setTimeout(async () => {
-        await showVerseNotification();
+        if (supportsRealWebNotifications()) await showVerseNotification();
+        else showInAppVersePopup();
         scheduleDailyNotification();
       }, ms);
 
       const current = new Date();
       if (current.getHours() === (hh || 8) && current.getMinutes() >= (mm || 0) && current.getMinutes() < ((mm || 0) + 5)) {
-        showVerseNotification();
+        if (supportsRealWebNotifications()) showVerseNotification();
+        else showInAppVersePopup();
       }
     }
     async function enableDailyNotification(){
@@ -861,11 +877,14 @@
       }
       state.notifTime = clean.padStart(5,'0');
 
-      if (!('Notification' in window)) {
+      if (!supportsRealWebNotifications()) {
         state.notifEnabled = true;
         saveNotifPrefs();
         scheduleDailyNotification();
-        updateNotifUi(`Horario guardado: ${state.notifTime}. Este navegador no soporta notificaciones web.`);
+        updateNotifUi(isLikelyWebView()
+          ? `Horario guardado: ${state.notifTime}. En AppCreator24 modo web va a salir un recordatorio emergente cuando abras la app; la notificación push real depende del sistema nativo.`
+          : `Horario guardado: ${state.notifTime}. Este navegador no soporta notificaciones web.`);
+        showInAppVersePopup();
         return;
       }
 
@@ -1398,11 +1417,15 @@
       await getServiceWorkerRegistration();
       try{
         await loadTranslations();
-        if (state.notifEnabled && 'Notification' in window && Notification.permission === 'granted') {
+        if (state.notifEnabled && supportsRealWebNotifications() && Notification.permission === 'granted') {
           scheduleDailyNotification();
           updateNotifUi();
-        } else if (state.notifEnabled && 'Notification' in window && Notification.permission !== 'granted') {
+        } else if (state.notifEnabled && supportsRealWebNotifications() && Notification.permission !== 'granted') {
           updateNotifUi('La hora quedó guardada, pero tenés que volver a permitir las notificaciones.');
+        } else if (state.notifEnabled && isLikelyWebView()) {
+          scheduleDailyNotification();
+          updateNotifUi(`Horario guardado: ${state.notifTime}. En AppCreator24 modo web queda como recordatorio emergente al abrir la app.`);
+          maybeShowWebViewReminderOnOpen();
         }
       }catch(err){
         console.error(err);
